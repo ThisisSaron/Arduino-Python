@@ -6,8 +6,8 @@ class Knowledge_Graph:
     def __init__(self):
         self.G = nx.DiGraph()
 
-    def Add_Node(self,GUID,c):
-        self.G.add_node(GUID, **{'C': c,'T': c,'src':{}})
+    def Add_Node(self,GUID,n):
+        self.G.add_node(GUID, **{'N': n,'T': n,'src':{}})
 
     def Add_Relationship(self,a,b):
         if (b,a) not in self.G.edges:
