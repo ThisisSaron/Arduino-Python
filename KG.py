@@ -7,9 +7,47 @@ import time
 class Knowledge_Graph:
     def __init__(self):
         self.G = nx.DiGraph()
+        self.serial_connections = {} 
 
     def Add_Node(self,GUID,c,port = 0,typ = 0):
         self.G.add_node(GUID, **{'C': c,'T': c,'src':{},'port': port, 'type':typ})
+
+    def add_a_house_node(self,GUID,c,port,typ):
+        self.Add_Node(GUID, c, port, typ)
+        if port != 0:
+            if port not in self.serial_connections:
+                try:
+                    self.serial_connections[port] = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
+                    time.sleep(2)
+                except serial.SerialException as e:
+                    print(f"Could not open COM{port}: {e}")
+                    return
+
+            arduino = self.serial_connections[port]
+            if typ == "A":
+                arduino.write(b'A1')
+            elif typ == "B":
+                arduino.write(b'B1')
+            time.sleep(0.1)
+            #print(arduino.readline().decode().strip())
+
+    def turn_off(self,port,typ):
+        if port != 0:
+            if port not in self.serial_connections:
+                try:
+                    self.serial_connections[port] = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
+                    time.sleep(2)
+                except serial.SerialException as e:
+                    print(f"Could not open COM{port}: {e}")
+                    return
+
+            arduino = self.serial_connections[port]
+            if typ == "A":
+                arduino.write(b'A0')
+            elif typ == "B":
+                arduino.write(b'B0')
+            time.sleep(0.1)
+            #print(arduino.readline().decode().strip())
 
     def Add_Relationship(self,a,b):
         if (b,a) not in self.G.edges:
@@ -130,6 +168,8 @@ class Knowledge_Graph:
 
         self.G.remove_edge(b,a)
 
+
+
 KG = Knowledge_Graph()
 
 nodes = [(5,200),(4,100),(3,300),(2,200),(1,50)]
@@ -137,7 +177,20 @@ nodes = [(5,200),(4,100),(3,300),(2,200),(1,50)]
 for el in nodes:
     KG.Add_Node(el[0],el[1])
 
-edges = [(3,5),(3,4),(1,2),(1,3)]
+
+
+KG.add_a_house_node(6,20,5,"A")
+KG.add_a_house_node(8,20,3,"A")
+time.sleep(1)
+time.sleep(1)
+time.sleep(1)
+KG.add_a_house_node(9,50,3,"B")
+KG.add_a_house_node(7,50,5,"B")
+
+
+
+
+edges = [(3,5),(3,4),(1,2),(1,3),(4,6),(4,7),(5,8),(5,9)]
 
 for a,b in edges:
     KG.Add_Relationship(a,b)
@@ -210,15 +263,10 @@ while True:
         src = a_att['src']
         print(src)
         if res:
-            for tup in res:
-                por, typ = tup
-                arduino = serial.Serial(port=f'COM{por}', baudrate=115200, timeout=0.1)
-                time.sleep(2)  # Wait for Arduino to reset
-                if typ == "A":
-                    arduino.write(b'A0')  # Set LED OFF
-                if typ == "B":
-                    arduino.write(b'B0')
-                time.sleep(0.1)
-                print(arduino.readline().decode().strip())
+            for por, typ in res:
+                KG.turn_off(por,typ)
+                time.sleep(1)
+                time.sleep(1)
 
-                arduino.close()
+for conn in KG.serial_connections.values():
+    conn.close()
