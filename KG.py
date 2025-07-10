@@ -1,13 +1,15 @@
 import networkx as nx
 from matplotlib import pyplot as plt
 from collections import deque
+import serial
+import time
 
 class Knowledge_Graph:
     def __init__(self):
         self.G = nx.DiGraph()
 
-    def Add_Node(self,GUID,n):
-        self.G.add_node(GUID, **{'N': n,'T': n,'src':{}})
+    def Add_Node(self,GUID,c,port = 0,typ = 0):
+        self.G.add_node(GUID, **{'C': c,'T': c,'src':{},'port': port, 'type':typ})
 
     def Add_Relationship(self,a,b):
         if (b,a) not in self.G.edges:
@@ -15,10 +17,11 @@ class Knowledge_Graph:
             a_att['src'][b] = 0
             self.G.add_edge(b,a)
 
-    def request(self,a,p):
+    def request_rec(self,a,p,res):
         a_att = self.G.nodes[a]
         src = a_att['src']
-        og = p
+        if len(src) == 0:
+            return p
         for sr in src:
             tot = self.G.nodes[sr]['T']
             if tot == 0:
@@ -28,13 +31,48 @@ class Knowledge_Graph:
                 a_att['src'][sr] += p
                 a_att['T'] += p
                 p = 0
-                break
+                if self.G.nodes[sr]['port'] != 0:
+                    res.append((self.G.nodes[sr]['port'],self.G.nodes[sr]['type']))
+                return 0
             else:
                 p = p - tot
                 a_att['src'][sr] += tot
                 a_att['T'] += tot
                 self.G.nodes[sr]['T'] = 0
-        print('Amount Transferred:',og-p)
+                if self.G.nodes[sr]['port'] != 0:
+                    res.append((self.G.nodes[sr]['port'],self.G.nodes[sr]['type']))
+
+        if p > 0 :
+            for sr in src:
+                print(p)
+                self.request_rec(sr,p,res)
+                tot = self.G.nodes[sr]['T']
+                if tot == 0:
+                    continue
+                elif tot - p >= 0:
+                    self.G.nodes[sr]['T'] -= p
+                    a_att['src'][sr] += p
+                    a_att['T'] += p
+                    p = 0
+                    if self.G.nodes[sr]['port'] != 0:
+                        res.append((self.G.nodes[sr]['port'],self.G.nodes[sr]['type']))
+                    break
+                else:
+                    p = p - tot
+                    a_att['src'][sr] += tot
+                    a_att['T'] += tot
+                    self.G.nodes[sr]['T'] = 0
+                    if self.G.nodes[sr]['port'] != 0:
+                        res.append((self.G.nodes[sr]['port'],self.G.nodes[sr]['type']))
+        else:
+            return
+    
+    def request(self,a,p):
+        res = []
+        n = self.request_rec(a,p,res)
+        #print('Amount Transferred:',p - n)
+        print(res)
+        return res
 
 
     def delete_node(self,a):
@@ -104,8 +142,8 @@ edges = [(3,5),(3,4),(1,2),(1,3)]
 for a,b in edges:
     KG.Add_Relationship(a,b)
 
-KG.request(3,250)
-KG.request(1,600)
+#KG.request(3,250)
+#KG.request(1,600)
 
 while True:
     print("1. ADD NODE   2. ADD AN EDGE  3. SHOW KNOWLEDGE GRAPH  4. DELETE A NODE 5. DELETE AN EDGE" \
@@ -117,7 +155,20 @@ while True:
     elif ent == "1":
         GUID = int(input('Enter the GUID: '))
         c = int(input("Enter the Capacity of the node: "))
-        KG.Add_Node(GUID,c)
+        port = int(input("Enter port (0 if N/A): "))
+        typ = input("Enter type (0 if N/A): ")
+        KG.Add_Node(GUID,c,port,typ)
+        if port != 0:
+            arduino = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
+            time.sleep(2)  # Wait for Arduino to reset
+            if typ == "A":
+                arduino.write(b'A1')  # Set LED ON
+            if typ == "B":
+                arduino.write(b'B1')
+            time.sleep(0.1)
+            print(arduino.readline().decode().strip())
+
+            arduino.close()
 
     elif ent == '2':
         a = int(input("Enter the GUID of the Top node: "))
@@ -153,7 +204,21 @@ while True:
         a_att = KG.G.nodes[a]
         src = a_att['src']
         print(src)
-        KG.request(a,p)
+
+        res = KG.request(a,p)
         a_att = KG.G.nodes[a]
         src = a_att['src']
         print(src)
+        if res:
+            for tup in res:
+                por, typ = tup
+                arduino = serial.Serial(port=f'COM{por}', baudrate=115200, timeout=0.1)
+                time.sleep(2)  # Wait for Arduino to reset
+                if typ == "A":
+                    arduino.write(b'A0')  # Set LED OFF
+                if typ == "B":
+                    arduino.write(b'B0')
+                time.sleep(0.1)
+                print(arduino.readline().decode().strip())
+
+                arduino.close()
