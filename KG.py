@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 from collections import deque
 import serial
 import time
+import tkinter as tk
+from tkinter import simpledialog, messagebox
 
 class Knowledge_Graph:
     def __init__(self):
@@ -178,19 +180,18 @@ for el in nodes:
     KG.Add_Node(el[0],el[1])
 
 
-
-KG.add_a_house_node(6,20,5,"A")
-KG.add_a_house_node(8,20,3,"A")
+KG.add_a_house_node(4,20,5,"A")
+KG.add_a_house_node(6,20,3,"A")
 time.sleep(1)
 time.sleep(1)
 time.sleep(1)
-KG.add_a_house_node(9,50,3,"B")
-KG.add_a_house_node(7,50,5,"B")
+KG.add_a_house_node(7,50,3,"B")
+KG.add_a_house_node(5,50,5,"B")
 
 
 
 
-edges = [(3,5),(3,4),(1,2),(1,3),(4,6),(4,7),(5,8),(5,9)]
+edges = [(1,3),(1,2),(2,4),(2,5),(3,6),(3,7)]
 
 for a,b in edges:
     KG.Add_Relationship(a,b)
@@ -198,75 +199,114 @@ for a,b in edges:
 #KG.request(3,250)
 #KG.request(1,600)
 
-while True:
-    print("1. ADD NODE   2. ADD AN EDGE  3. SHOW KNOWLEDGE GRAPH  4. DELETE A NODE 5. DELETE AN EDGE" \
-            "  6. Request power 7. QUIT")
-    ent = input(' - ')
+class KnowledgeGraphApp:
+    def __init__(self, master):
+        self.master = master
+        master.title("Knowledge Graph")
 
-    if ent == "7":
-        break
-    elif ent == "1":
-        GUID = int(input('Enter the GUID: '))
-        c = int(input("Enter the Capacity of the node: "))
-        port = int(input("Enter port (0 if N/A): "))
-        typ = input("Enter type (0 if N/A): ")
-        KG.Add_Node(GUID,c,port,typ)
-        if port != 0:
-            arduino = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
-            time.sleep(2)  # Wait for Arduino to reset
-            if typ == "A":
-                arduino.write(b'A1')  # Set LED ON
-            if typ == "B":
-                arduino.write(b'B1')
-            time.sleep(0.1)
-            print(arduino.readline().decode().strip())
+        # Buttons
+        tk.Button(master, text="Add Node", command=self.add_node).pack()
+        tk.Button(master, text="Add Edge", command=self.add_edge).pack()
+        tk.Button(master, text="Delete Node", command=self.delete_node).pack()
+        tk.Button(master, text="Delete Edge", command=self.delete_edge).pack()
+        tk.Button(master, text="Request Power", command=self.request_power).pack()
+        tk.Button(master, text="Show Graph", command=self.show_graph).pack()
 
-            arduino.close()
+    def add_node(self):
+        try:
+            guid = int(simpledialog.askstring("Add Node", "Enter GUID:"))
+            capacity = int(simpledialog.askstring("Add Node", "Enter Capacity:"))
+            port = int(simpledialog.askstring("Add Node", "Enter port (0 if N/A):"))
+            typ = simpledialog.askstring("Add Node", "Enter type (0 if N/A):")
 
-    elif ent == '2':
-        a = int(input("Enter the GUID of the Top node: "))
-        b = int(input("Enter the GUID of the Source node: "))
-        KG.Add_Relationship(a,b)
+            KG.Add_Node(guid, capacity, port, typ)
 
-    elif ent == '3':
-        pos = nx.spring_layout(KG.G)  # Layout for positioning
-        labels = {
-            node: "\n".join([f"{k}: {v}" for k, v in attrs.items()])
-            for node, attrs in KG.G.nodes(data=True)
-        }
-        nx.draw(KG.G, pos, with_labels=True, node_color='lightblue', node_size=2000, font_size=10,font_weight = 'bold')
-        nx.draw_networkx_labels(KG.G, pos, labels=labels, font_size=8,horizontalalignment= 'left',verticalalignment= 'top',font_weight='bold')
+            if port != 0:
+                arduino = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
+                time.sleep(2)  # Wait for Arduino to reset
+                if typ == "A":
+                    arduino.write(b'A1')  # Set LED ON
+                elif typ == "B":
+                    arduino.write(b'B1')
+                time.sleep(0.1)
+                print(arduino.readline().decode().strip())
+                arduino.close()
+
+            self.show_graph()
+
+        except Exception as e:
+            messagebox.showerror("Invalid input", f"Error: {e}")
+
+    def add_edge(self):
+        try:
+            top = int(simpledialog.askstring("Add Edge", "Enter Top Node GUID:"))
+            source = int(simpledialog.askstring("Add Edge", "Enter Source Node GUID:"))
+            KG.Add_Relationship(top, source)
+            self.show_graph()
+        except Exception:
+            messagebox.showerror("Invalid input", "Please enter valid integers.")
+
+    def delete_node(self):
+        try:
+            guid = int(simpledialog.askstring("Delete Node", "Enter GUID to delete:"))
+            KG.delete_node(guid)
+            self.show_graph()
+        except Exception:
+            messagebox.showerror("Invalid input", "Please enter a valid GUID.")
+
+    def delete_edge(self):
+        try:
+            top = int(simpledialog.askstring("Delete Edge", "Enter Top Node GUID:"))
+            source = int(simpledialog.askstring("Delete Edge", "Enter Source Node GUID:"))
+            KG.delete_edge(top, source)
+            self.show_graph()
+        except Exception:
+            messagebox.showerror("Invalid input", "Please enter valid GUIDs.")
+
+    def request_power(self):
+        try:
+            a = int(simpledialog.askstring("Request Power", "Enter GUID:"))
+            p = int(simpledialog.askstring("Request Power", "Enter Power Needed:"))
+            a_att = KG.G.nodes[a]
+            src = a_att['src']
+            print(src)
+
+            res = KG.request(a,p)
+            a_att = KG.G.nodes[a]
+            src = a_att['src']
+            print(src)
+            if res:
+                for por, typ in res:
+                    KG.turn_off(por,typ)
+                    time.sleep(1)
+                    time.sleep(1)
+                self.show_graph()
+        except Exception:
+            messagebox.showerror("Invalid input", "Please enter valid values.")
+
+    def show_graph(self):
+        plt.clf()
+
+        pos = nx.spring_layout(KG.G, seed=42)
+
+        # Draw nodes and GUID labels
+        nx.draw(KG.G, pos, with_labels=True, node_color='lightblue',
+                node_size=2000, font_size=10, font_weight='bold', arrows=True)
+
+        # Draw metadata just below the node label (slightly offset)
+        for node, (x, y) in pos.items():
+            attrs = KG.G.nodes[node]
+            info = "\n".join([f"{k}: {v}" for k, v in attrs.items()])
+            plt.text(x, y - 0.08, info, fontsize=8, ha='center', va='top')
 
         plt.title("Knowledge Graph")
+        plt.tight_layout()
+        plt.margins(y=0.2) # add extra margin at bottom to avoid cutoff
         plt.show()
 
-    elif ent == '4':
-        GUID = int(input('Enter the GUID of the node: '))
-        KG.delete_node(GUID)
 
-    elif ent == '5':
-        a = int(input('Enter the GUID of the top node: '))
-        b = int(input('Enter the GUID of the source node: '))
-
-        KG.delete_edge(a,b)
-
-    elif ent == '6':
-        a = int(input('Enter the GUID: '))
-        p = int(input('Enter how much power is needed: '))
-    
-        a_att = KG.G.nodes[a]
-        src = a_att['src']
-        print(src)
-
-        res = KG.request(a,p)
-        a_att = KG.G.nodes[a]
-        src = a_att['src']
-        print(src)
-        if res:
-            for por, typ in res:
-                KG.turn_off(por,typ)
-                time.sleep(1)
-                time.sleep(1)
-
-for conn in KG.serial_connections.values():
-    conn.close()
+# Main setup
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = KnowledgeGraphApp(root)
+    root.mainloop()
