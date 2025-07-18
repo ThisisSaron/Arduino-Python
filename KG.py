@@ -5,6 +5,15 @@ import serial
 import time
 import tkinter as tk
 from tkinter import simpledialog, messagebox
+import random
+
+
+def random_guid(exclude, lower=0, upper=100):
+    while True:
+        r = random.randint(lower, upper)
+        if r not in exclude:
+            return r
+
 
 class Knowledge_Graph:
     def __init__(self):
@@ -14,8 +23,14 @@ class Knowledge_Graph:
     def Add_Node(self,GUID,c,port = 0,typ = 0):
         self.G.add_node(GUID, **{'C': c,'T': c,'src':{},'port': port, 'type':typ})
 
-    def add_a_house_node(self,GUID,c,port,typ):
-        self.Add_Node(GUID, c, port, typ)
+    def add_a_house_node(self,GUID,c,port):
+        KG.Add_Node(GUID,c,port,0)
+        a = random_guid(list(self.G.nodes),1,100)
+        KG.Add_Node(a, 20, port, "A")
+        b = random_guid(list(self.G.nodes),1,100)
+        KG.Add_Node(b, 50, port, "B")
+        KG.Add_Relationship(GUID,a)
+        KG.Add_Relationship(GUID,b)
         if port != 0:
             if port not in self.serial_connections:
                 try:
@@ -26,10 +41,11 @@ class Knowledge_Graph:
                     return
 
             arduino = self.serial_connections[port]
-            if typ == "A":
-                arduino.write(b'A1')
-            elif typ == "B":
-                arduino.write(b'B1')
+            arduino.write(b'A1')
+            time.sleep(1)
+            time.sleep(1)
+            time.sleep(1)
+            arduino.write(b'B1')
             time.sleep(0.1)
             #print(arduino.readline().decode().strip())
 
@@ -174,24 +190,18 @@ class Knowledge_Graph:
 
 KG = Knowledge_Graph()
 
-nodes = [(5,200),(4,100),(3,300),(2,200),(1,50)]
+nodes = [(1,50)]
 
 for el in nodes:
     KG.Add_Node(el[0],el[1])
 
 
-KG.add_a_house_node(4,20,5,"A")
-KG.add_a_house_node(6,20,3,"A")
-time.sleep(1)
-time.sleep(1)
-time.sleep(1)
-KG.add_a_house_node(7,50,3,"B")
-KG.add_a_house_node(5,50,5,"B")
+KG.add_a_house_node(2,0,10)
+#KG.add_a_house_node(3,0,3)
 
 
 
-
-edges = [(1,3),(1,2),(2,4),(2,5),(3,6),(3,7)]
+edges = [(1,2)]
 
 for a,b in edges:
     KG.Add_Relationship(a,b)
@@ -215,22 +225,15 @@ class KnowledgeGraphApp:
     def add_node(self):
         try:
             guid = int(simpledialog.askstring("Add Node", "Enter GUID:"))
+            if guid in list(KG.G.nodes):
+                raise RuntimeError("GUID already exists")
             capacity = int(simpledialog.askstring("Add Node", "Enter Capacity:"))
-            port = int(simpledialog.askstring("Add Node", "Enter port (0 if N/A):"))
-            typ = simpledialog.askstring("Add Node", "Enter type (0 if N/A):")
-
-            KG.Add_Node(guid, capacity, port, typ)
-
-            if port != 0:
-                arduino = serial.Serial(port=f'COM{port}', baudrate=115200, timeout=0.1)
-                time.sleep(2)  # Wait for Arduino to reset
-                if typ == "A":
-                    arduino.write(b'A1')  # Set LED ON
-                elif typ == "B":
-                    arduino.write(b'B1')
-                time.sleep(0.1)
-                print(arduino.readline().decode().strip())
-                arduino.close()
+            port = int(simpledialog.askstring("Add Node", "Enter port (0 if Not a house):"))
+            #typ = simpledialog.askstring("Add Node", "Enter type (0 if N/A):")
+            if port == 0:
+                KG.Add_Node(guid, capacity, port, 0)
+            else:
+                KG.add_a_house_node(guid,capacity,port)
 
             self.show_graph()
 
