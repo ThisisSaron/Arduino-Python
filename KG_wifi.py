@@ -86,7 +86,6 @@ class Knowledge_Graph:
 
         if p > 0 :
             for sr in src:
-                print(p)
                 self.request_rec(sr,p,res)
                 tot = self.G.nodes[sr]['T']
                 if tot == 0:
@@ -113,7 +112,6 @@ class Knowledge_Graph:
         res = []
         n = self.request_rec(a,p,res)
         #print('Amount Transferred:',p - n)
-        print(res)
         return res
 
 
@@ -172,29 +170,6 @@ class Knowledge_Graph:
 
         self.G.remove_edge(b,a)
 
-
-
-KG = Knowledge_Graph()
-
-nodes = [(1,50)]
-
-for el in nodes:
-    KG.Add_Node(el[0],el[1])
-
-
-KG.add_a_house_node(2,0,"149.84.81.192")
-KG.add_a_house_node(3,0,"149.84.81.163")
-
-
-
-edges = [(1,2),(1,3)]
-
-for a,b in edges:
-    KG.Add_Relationship(a,b)
-
-#KG.request(3,250)
-#KG.request(1,600)
-
 class KnowledgeGraphApp:
     def __init__(self, master):
         self.master = master
@@ -207,6 +182,7 @@ class KnowledgeGraphApp:
         tk.Button(master, text="Delete Edge", command=self.delete_edge).pack()
         tk.Button(master, text="Request Power", command=self.request_power).pack()
         tk.Button(master, text="Show Graph", command=self.show_graph).pack()
+        tk.Button(master, text="Choose Scenario", command=self.choose_scenario).pack()
 
     def add_node(self):
         try:
@@ -258,12 +234,10 @@ class KnowledgeGraphApp:
             p = int(simpledialog.askstring("Request Power", "Enter Power Needed:"))
             a_att = KG.G.nodes[a]
             src = a_att['src']
-            print(src)
 
             res = KG.request(a,p)
             a_att = KG.G.nodes[a]
             src = a_att['src']
-            print(src)
             if res:
                 for ip, typ in res:
                     if typ == "A":
@@ -294,10 +268,53 @@ class KnowledgeGraphApp:
         plt.tight_layout()
         plt.margins(y=0.2) # add extra margin at bottom to avoid cutoff
         plt.show()
-
+    
+    def choose_scenario(self):
+        try:
+            scen = simpledialog.askstring("Choose Scenario", "Enter Scenario:")
+            if scen == 'A' or scen == 'a':
+                nodes = [(1,20),(2,20),(3,20),(4,20)]
+                for node in nodes:
+                    KG.Add_Node(node[0],node[1])
+                edges = [(1,2),(1,3),(1,4)]
+                for a,b in edges:
+                    KG.Add_Relationship(a,b)
+            elif scen == 'B' or scen == 'b':
+                nodes = [(1,20),(2,20),(3,20),(4,20)]
+                for node in nodes:
+                    KG.Add_Node(node[0],node[1])
+                edges = [(1,2),(1,3),(3,4)]
+                for a,b in edges:
+                    KG.Add_Relationship(a,b)
+            elif scen == 'C' or scen == 'c':
+                nodes = [(1,20),(2,20),(3,20),(4,20)]
+                for node in nodes:
+                    KG.Add_Node(node[0],node[1])
+                edges = [(1,2),(2,3),(2,4)]
+                for a,b in edges:
+                    KG.Add_Relationship(a,b)
+            elif scen == 'D' or scen == 'd':
+                nodes = [(1,20),(2,20),(3,20),(4,20)]
+                for node in nodes:
+                    KG.Add_Node(node[0],node[1])
+                edges = [(1,2),(2,3),(3,4)]
+                for a,b in edges:
+                    KG.Add_Relationship(a,b)
+            elif scen == 'E' or scen == 'e':
+                nodes = [(1,50)]
+                for el in nodes:
+                    KG.Add_Node(el[0],el[1])
+                KG.add_a_house_node(2,0,"149.84.81.192")
+                KG.add_a_house_node(3,0,"149.84.81.163")
+                edges = [(1,2),(1,3)]
+                for a,b in edges:
+                    KG.Add_Relationship(a,b)
+        except Exception:
+            messagebox.showerror("Invalid input")
 
 # Main setup
 if __name__ == "__main__":
+    KG = Knowledge_Graph()
     root = tk.Tk()
     app = KnowledgeGraphApp(root)
     root.mainloop()
