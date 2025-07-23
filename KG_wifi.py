@@ -216,7 +216,7 @@ class KnowledgeGraphApp:
             capacity = int(simpledialog.askstring("Add Node", "Enter Capacity:"))
             ip = simpledialog.askstring("Add Node", "Enter ip (0 if Not a house):")
             #typ = simpledialog.askstring("Add Node", "Enter type (0 if N/A):")
-            if ip == 0:
+            if ip == '0':
                 KG.Add_Node(guid, capacity, ip, 0)
             else:
                 KG.add_a_house_node(guid,capacity,ip)
