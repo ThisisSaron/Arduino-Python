@@ -63,10 +63,10 @@ class Knowledge_Graph:
             time.sleep(0.1)
 
     def Add_Relationship(self, a, b):
-        if (b, a) not in self.G.edges:
-            a_att = self.G.nodes[a]
-            a_att['src'][b] = 0
-            self.G.add_edge(b, a)
+        if (a, b) not in self.G.edges:
+            b_att = self.G.nodes[b]
+            b_att['src'][a] = 0
+            self.G.add_edge(a, b)
 
     def request_rec(self, a, p, res):
         a_att = self.G.nodes[a]
@@ -179,7 +179,7 @@ class Knowledge_Graph:
                 if t in srcs:
                     del srcs[t]
 
-        self.G.remove_edge(b, a)
+        self.G.remove_edge(a, b)
 
     def get_graph_data(self):
         """Convert graph to JSON-serializable format"""
@@ -291,7 +291,7 @@ def delete_edge():
         a = int(data['from'])
         b = int(data['to'])
         
-        if (b, a) not in KG.G.edges:
+        if (a, b) not in KG.G.edges:
             return jsonify({'error': 'Edge does not exist'}), 404
         
         KG.delete_edge(a, b)

@@ -68,10 +68,10 @@ class Knowledge_Graph:
             #print(arduino.readline().decode().strip())
 
     def Add_Relationship(self,a,b):
-        if (b,a) not in self.G.edges:
-            a_att = self.G.nodes[a] #ATTRIBUTES OF A
-            a_att['src'][b] = 0
-            self.G.add_edge(b,a)
+        if (a,b) not in self.G.edges:
+            b_att = self.G.nodes[b] #ATTRIBUTES OF B
+            b_att['src'][a] = 0
+            self.G.add_edge(a,b)
 
     def request_rec(self,a,p,res):
         a_att = self.G.nodes[a]
@@ -188,7 +188,7 @@ class Knowledge_Graph:
                 if t in srcs:
                     del srcs[t]
 
-        self.G.remove_edge(b,a)
+        self.G.remove_edge(a,b)
 
 
 
