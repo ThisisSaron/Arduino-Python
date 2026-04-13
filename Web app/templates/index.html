@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Graph - Smart House Network</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            height: 90vh;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            margin: 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .graph-container {
+            flex: 1;
+            position: relative;
+            background: #fafbfc;
+        }
+        
+        #graph {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 16px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 8px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .button-group button {
+            flex: 1;
+            margin: 0;
+        }
+        
+        .scenario-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .scenario-buttons button {
+            margin: 0;
+            padding: 8px;
+        }
+        
+        .status-box {
+            background: #e8f4f8;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #333;
+            margin-top: 15px;
+        }
+        
+        .status-box.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
+        .status-box.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        
+        .node-info {
+            background: #f0f4ff;
+            border: 1px solid #d9e2f9;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 12px;
+            color: #333;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .node-info p {
+            margin: 5px 0;
+        }
+        
+        .node-info strong {
+            color: #667eea;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 5px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .help-text {
+            font-size: 11px;
+            color: #999;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                max-height: 30vh;
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="header" style="margin: -20px -20px 0 -20px; padding: 20px; border-radius: 0; margin-bottom: 20px;">
+                <h1>Knowledge Graph</h1>
+                <p>Smart House Network Dashboard</p>
+            </div>
+            
+            <!-- Add Node Section -->
+            <div class="section">
+                <h3>Add Node</h3>
+                <div class="form-group">
+                    <label for="nodeGuid">Node ID (GUID):</label>
+                    <input type="number" id="nodeGuid" placeholder="e.g., 1" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="nodeCapacity">Capacity:</label>
+                    <input type="number" id="nodeCapacity" placeholder="e.g., 20" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="nodeIP">IP Address (leave 0 for non-house nodes):</label>
+                    <input type="text" id="nodeIP" placeholder="e.g., 192.168.1.1 or 0">
+                </div>
+                <button onclick="addNode()">Add Node</button>
+                <div class="help-text">Enter 0 as IP for nodes that don't represent houses</div>
+            </div>
+            
+            <!-- Add Edge Section -->
+            <div class="section">
+                <h3>Add Edge (Connection)</h3>
+                <div class="form-group">
+                    <label for="edgeFrom">From Node ID:</label>
+                    <input type="number" id="edgeFrom" placeholder="e.g., 1" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="edgeTo">To Node ID:</label>
+                    <input type="number" id="edgeTo" placeholder="e.g., 2" min="0">
+                </div>
+                <button onclick="addEdge()">Add Edge</button>
+            </div>
+            
+            <!-- Request Power Section -->
+            <div class="section">
+                <h3>Request Power</h3>
+                <div class="form-group">
+                    <label for="powerNode">Node ID:</label>
+                    <input type="number" id="powerNode" placeholder="e.g., 1" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="powerAmount">Power Needed:</label>
+                    <input type="number" id="powerAmount" placeholder="e.g., 10" min="1">
+                </div>
+                <button onclick="requestPower()">Request Power</button>
+                <div class="loading" id="powerLoading">
+                    <span class="spinner"></span> Sending commands to ESP32...
+                </div>
+            </div>
+            
+            <!-- Scenarios Section -->
+            <div class="section">
+                <h3>Load Scenario</h3>
+                <div class="scenario-buttons">
+                    <button onclick="loadScenario('A')">Scenario A</button>
+                    <button onclick="loadScenario('B')">Scenario B</button>
+                    <button onclick="loadScenario('C')">Scenario C</button>
+                    <button onclick="loadScenario('D')">Scenario D</button>
+                </div>
+                <button onclick="loadScenario('E')" style="grid-column: 1 / -1;">Scenario E (ESP32 Devices)</button>
+                <div class="help-text" style="margin-top: 10px;">Scenarios A-D are local demonstrations. Scenario E requires ESP32 devices.</div>
+            </div>
+            
+            <!-- Delete Section -->
+            <div class="section">
+                <h3>Delete</h3>
+                <div class="form-group">
+                    <label for="deleteNode">Node ID to Delete:</label>
+                    <input type="number" id="deleteNode" placeholder="e.g., 1" min="0">
+                </div>
+                <button onclick="deleteNode()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">Delete Node</button>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="statusMessage" class="status-box" style="display: none;"></div>
+        </div>
+        
+        <div class="graph-container">
+            <div id="graph" style="width:100%; height:100%;"></div>
+        </div>
+    </div>
+
+    <script>
+        let network = null;
+        let nodesData = new vis.DataSet([]);
+        let edgesData = new vis.DataSet([]);
+        
+        // Initialize graph
+        function initGraph(data) {
+            if (!data.nodes || data.nodes.length === 0) {
+                console.log('No nodes in graph data');
+                return;
+            }
+            
+            console.log('Graph data received - Nodes:', data.nodes.length, 'Edges:', data.edges.length);
+            console.log('Edge details:', data.edges);
+            
+            // Update node data with latest values
+            const nodesUpdate = data.nodes.map(node => ({
+                id: node.id,
+                label: `${node.id}\n(C:${node.capacity}, T:${node.current})`,
+                title: node.title,
+                color: node.ip !== '0' ? '#ff9999' : '#99ccff',
+                font: { size: 14, bold: { size: 16 } },
+                shape: 'box'
+            }));
+            
+            // Create unique edge IDs to prevent duplicates
+            const edgesUpdate = data.edges.map((edge, idx) => ({
+                id: `${edge.from}-${edge.to}`, // Use from-to as unique ID
+                from: edge.from,
+                to: edge.to,
+                arrows: 'to'
+            }));
+            
+            // Remove duplicates from edgesUpdate
+            const edgeMap = new Map();
+            edgesUpdate.forEach(edge => {
+                edgeMap.set(edge.id, edge);
+            });
+            const uniqueEdges = Array.from(edgeMap.values());
+            console.log('Unique edges after dedup:', uniqueEdges.length);
+            
+            // If network exists, just update data; otherwise create it
+            if (network) {
+                console.log('Updating existing network');
+
+                // Remove nodes that no longer exist in the graph
+                const currentNodeIds = nodesData.get().map(node => node.id.toString());
+                const newNodeIds = nodesUpdate.map(node => node.id.toString());
+                const nodesToRemove = currentNodeIds.filter(id => !newNodeIds.includes(id));
+                if (nodesToRemove.length > 0) {
+                    console.log('Removing nodes no longer present:', nodesToRemove);
+                    nodesData.remove(nodesToRemove);
+                }
+
+                nodesData.update(nodesUpdate);
+
+                // Clear all edges first, then add the unique ones
+                const allEdges = edgesData.get();
+                edgesData.remove(allEdges.map(e => e.id));
+                edgesData.add(uniqueEdges);
+
+                network.fit({ animation: { duration: 300 } });
+            } else {
+                console.log('Creating new network');
+                nodesData.add(nodesUpdate);
+                edgesData.add(uniqueEdges);
+                
+                const container = document.getElementById('graph');
+                const options = {
+                    physics: {
+                        enabled: true,
+                        solver: 'forceAtlas2Based',
+                        forceAtlas2Based: {
+                            gravitationalConstant: -26,
+                            centralGravity: 0.005,
+                            springLength: 200
+                        },
+                        timestep: 0.35,
+                        stabilization: {
+                            iterations: 200
+                        }
+                    },
+                    interaction: {
+                        navigationButtons: true,
+                        keyboard: true,
+                        zoomView: true,
+                        dragView: true
+                    },
+                    nodes: {
+                        shape: 'box',
+                        margin: 10,
+                        widthConstraint: {
+                            maximum: 200
+                        }
+                    }
+                };
+                
+                network = new vis.Network(container, { nodes: nodesData, edges: edgesData }, options);
+                console.log('Network created');
+            }
+        }
+        
+        // Load initial graph
+        fetch('/api/graph')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Graph data received:', data);
+                initGraph(data);
+            })
+            .catch(error => {
+                console.error('Error loading graph:', error);
+                showStatus('Error loading graph. Check console for details.', 'error');
+            });
+        
+        // Polling function to refresh graph (since WebSockets don't work on free PythonAnywhere)
+        let lastRefreshTime = 0;
+        const REFRESH_DEBOUNCE_MS = 300; // Prevent refreshes within 300ms of each other
+        
+        function refreshGraph() {
+            const now = Date.now();
+            if (now - lastRefreshTime < REFRESH_DEBOUNCE_MS) {
+                console.log('Refresh debounced - too soon after last refresh');
+                return;
+            }
+            
+            lastRefreshTime = now;
+            fetch('/api/graph')
+                .then(response => response.json())
+                .then(data => {
+                    initGraph(data);
+                    console.log('Graph refreshed at', new Date().toLocaleTimeString());
+                })
+                .catch(error => {
+                    console.error('Error refreshing graph:', error);
+                });
+        }
+        
+        // Refresh graph every 3 seconds (less frequent to avoid conflicts)
+        setInterval(refreshGraph, 3000);
+        
+        // API Functions
+        function addNode() {
+            const guid = document.getElementById('nodeGuid').value;
+            const capacity = document.getElementById('nodeCapacity').value;
+            const ip = document.getElementById('nodeIP').value || '0';
+            
+            if (!guid || !capacity) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+            
+            fetch('/api/nodes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ guid, capacity, ip })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus('Error: ' + data.error, 'error');
+                } else {
+                    showStatus('Node added successfully', 'success');
+                    document.getElementById('nodeGuid').value = '';
+                    document.getElementById('nodeCapacity').value = '';
+                    document.getElementById('nodeIP').value = '';
+                    // Immediately refresh graph after adding node
+                    setTimeout(refreshGraph, 100);
+                }
+            });
+        }
+        
+        function addEdge() {
+            const from = document.getElementById('edgeFrom').value;
+            const to = document.getElementById('edgeTo').value;
+            const button = event.target;
+            
+            if (!from || !to) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+            
+            // Disable button during request
+            button.disabled = true;
+            button.style.opacity = '0.5';
+            
+            fetch('/api/edges', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from, to })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showStatus('Error: ' + data.error, 'error');
+                } else {
+                    showStatus('Edge added successfully', 'success');
+                    document.getElementById('edgeFrom').value = '';
+                    document.getElementById('edgeTo').value = '';
+                    // Immediately refresh graph after adding edge
+                    setTimeout(refreshGraph, 100);
+                }
+            })
+            .finally(() => {
+                // Re-enable button
+                button.disabled = false;
+                button.style.opacity = '1';
+            });
+        }
+        
+        function deleteNode() {
+            const guid = document.getElementById('deleteNode').value;
+            
+            if (!guid) {
+                showStatus('Please enter a node ID', 'error');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to delete this node?')) {
+                fetch(`/api/nodes/${guid}`, { method: 'DELETE' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.error) {
+                            showStatus('Error: ' + data.error, 'error');
+                        } else {
+                            showStatus('Node deleted successfully', 'success');
+                            document.getElementById('deleteNode').value = '';
+                            // Immediately refresh graph after deleting node
+                            setTimeout(refreshGraph, 100);
+                        }
+                    });
+            }
+        }
+        
+        function requestPower() {
+            const nodeId = document.getElementById('powerNode').value;
+            const power = document.getElementById('powerAmount').value;
+            
+            if (!nodeId || !power) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+            
+            document.getElementById('powerLoading').classList.add('active');
+            
+            fetch('/api/request-power', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ node_id: nodeId, power })
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('powerLoading').classList.remove('active');
+                if (data.error) {
+                    showStatus('Error: ' + data.error, 'error');
+                } else {
+                    const messages = data.commands_sent.map(cmd => 
+                        `${cmd.ip}: ${cmd.command}`
+                    ).join(', ');
+                    showStatus(`Power transferred. Commands: ${messages}`, 'success');
+                    // Immediately refresh graph after power request
+                    setTimeout(refreshGraph, 100);
+                }
+            });
+        }
+        
+        function loadScenario(scenario) {
+            fetch(`/api/scenarios/${scenario}`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) {
+                        showStatus('Error: ' + data.error, 'error');
+                    } else {
+                        showStatus(`Scenario ${scenario} loaded`, 'success');
+                        // Immediately refresh graph after loading scenario
+                        setTimeout(refreshGraph, 100);
+                    }
+                });
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-box ${type}`;
+            statusDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
